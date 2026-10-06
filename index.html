@@ -4,44 +4,77 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SortwiseAI - Smart Waste Sorting</title>
-    <!-- Load TensorFlow.js and the COCO-SSD object detection model -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
         :root { --primary: #2e7d32; --bg: #f1f8e9; --text: #1b5e20; }
+        * { box-sizing: border-box; }
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
             background-color: var(--bg); color: var(--text); 
-            margin: 0; padding: 20px; text-align: center; 
+            margin: 0; padding: 15px; text-align: center; 
         }
-        header { margin-bottom: 20px; }
-        h1 { color: var(--primary); margin-bottom: 5px; }
+        header { margin-bottom: 15px; }
+        h1 { color: var(--primary); margin: 0 0 5px 0; font-size: 26px; }
         .container { 
-            max-width: 800px; margin: 0 auto; background: white; 
-            padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            max-width: 600px; margin: 0 auto; background: white; 
+            padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
         }
-        .video-container { position: relative; display: inline-block; margin-top: 20px; }
-        video, canvas { border-radius: 8px; background: #e0e0e0; }
-        canvas { position: absolute; top: 0; left: 0; }
-        .controls { margin-top: 20px; display: flex; justify-content: center; gap: 10px; align-items: center;}
+        .video-container { 
+            position: relative; 
+            width: 100%; 
+            background: #000; 
+            border-radius: 10px; 
+            overflow: hidden; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 260px;
+        }
+        video { 
+            width: 100%; 
+            height: auto; 
+            display: block; 
+        }
+        /* Canvas is completely transparent so the video shines through */
+        canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: transparent !important; 
+            pointer-events: none; 
+        }
+        .controls { 
+            margin-top: 15px; 
+            display: flex; 
+            justify-content: center; 
+            gap: 10px; 
+            flex-wrap: wrap; 
+        }
         button, .file-upload-label { 
             background-color: var(--primary); color: white; border: none; 
-            padding: 10px 20px; font-size: 16px; border-radius: 6px; 
-            cursor: pointer; transition: 0.3s; 
+            padding: 12px 20px; font-size: 15px; border-radius: 8px; 
+            cursor: pointer; font-weight: bold;
         }
-        button:hover, .file-upload-label:hover { background-color: #1b5e20; }
         input[type="file"] { display: none; }
         .stats { 
-            display: flex; justify-content: space-around; margin-top: 20px; 
-            background: var(--bg); padding: 15px; border-radius: 8px; 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px; 
+            margin-top: 15px; 
+            background: var(--bg); 
+            padding: 12px; 
+            border-radius: 8px; 
         }
-        .stat-box { font-weight: bold; font-size: 18px; }
-        .status { margin-top: 15px; font-style: italic; color: #555; }
-        footer { margin-top: 40px; font-size: 14px; }
+        .stat-box { font-weight: bold; font-size: 15px; }
+        .status { margin-top: 12px; font-size: 14px; color: #555; }
+        footer { margin-top: 25px; font-size: 13px; }
         footer a { color: var(--primary); text-decoration: none; font-weight: bold; }
         .info-section { 
-            margin-top: 30px; text-align: left; background: #e8f5e9; 
-            padding: 15px; border-radius: 8px; font-size: 14px;
+            margin-top: 20px; text-align: left; background: #e8f5e9; 
+            padding: 12px; border-radius: 8px; font-size: 13px;
         }
     </style>
 </head>
@@ -53,13 +86,13 @@
         </header>
 
         <div class="video-container">
-            <video id="webcam" width="640" height="480" autoplay muted playsinline></video>
-            <canvas id="canvas" width="640" height="480"></canvas>
+            <video id="webcam" autoplay muted playsinline></video>
+            <canvas id="canvas"></canvas>
         </div>
 
         <div class="controls">
             <button id="start-btn">Start Camera</button>
-            <button id="stop-btn" style="display:none;">Stop Camera</button>
+            <button id="stop-btn" style="display:none; background-color: #c62828;">Stop Camera</button>
             <label class="file-upload-label">
                 Upload Photo
                 <input type="file" id="image-upload" accept="image/*">
@@ -69,24 +102,22 @@
         <p id="status-msg" class="status">Loading AI Model... Please wait.</p>
 
         <div class="stats">
-            <div class="stat-box">Recyclable ♻️</div>
-            <div class="stat-box">Organic 🍎</div>
-            <div class="stat-box">E-Waste 💻</div>
-            <div class="stat-box">Review ⚠️</div>
+            <div class="stat-box">♻️ Recyclable</div>
+            <div class="stat-box">🍎 Organic</div>
+            <div class="stat-box">💻 E-Waste</div>
+            <div class="stat-box">⚠️ Review</div>
         </div>
 
         <div class="info-section">
-            <h3>About This AI</h3>
-            <p><strong>Model:</strong> COCO-SSD (Browser-based TensorFlow.js). No data or images leave your device.</p>
-            <p><strong>Capabilities:</strong> Detects common objects like bottles, cups, cell phones, and fruit.</p>
-            <p><strong>Permissions:</strong> Requires camera access. Works entirely in your browser after the initial load.</p>
+            <h3>About SortwiseAI</h3>
+            <p><strong>Model:</strong> COCO-SSD running directly in your phone browser.</p>
+            <p><strong>Camera:</strong> Switches automatically to your rear camera on mobile.</p>
         </div>
     </div>
 
     <footer>
         <p>&copy; 2026 Team Akari</p>
-        <!-- Replace the link below with your actual GitHub repository link -->
-        <p><a href="https://github.com/your-username/sortwise-ai" target="_blank">View Code on GitHub</a></p>
+        <p><a href="https://github.com/teppalalohith1709-wq/sortwise-ai" target="_blank">View Code on GitHub</a></p>
     </footer>
 
     <script>
@@ -103,44 +134,47 @@
         let stream = null;
         let animationId;
 
-        // Map general COCO-SSD items to our waste categories
         const categories = {
-            'bottle': 'Recyclable', 'cup': 'Recyclable', 'wine glass': 'Recyclable', 'fork': 'Recyclable', 'knife': 'Recyclable', 'spoon': 'Recyclable', 'bowl': 'Recyclable',
+            'bottle': 'Recyclable', 'cup': 'Recyclable', 'wine glass': 'Recyclable',
+            'fork': 'Recyclable', 'knife': 'Recyclable', 'spoon': 'Recyclable', 'bowl': 'Recyclable',
             'apple': 'Organic', 'banana': 'Organic', 'orange': 'Organic', 'broccoli': 'Organic', 'carrot': 'Organic',
             'cell phone': 'E-Waste', 'tv': 'E-Waste', 'laptop': 'E-Waste', 'mouse': 'E-Waste', 'remote': 'E-Waste', 'keyboard': 'E-Waste'
         };
 
-        // 1. Load the AI model
         cocoSsd.load().then(loadedModel => {
             model = loadedModel;
-            statusMsg.innerText = "AI Model Ready! Start the camera or upload an image.";
+            statusMsg.innerText = "AI Model Ready! Tap 'Start Camera'.";
         });
 
-        // 2. Handle Camera Start
         startBtn.addEventListener('click', async () => {
             if (!model) {
-                alert("Please wait for the AI model to finish loading.");
+                alert("Model is still loading, please wait.");
                 return;
             }
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                // Requests the rear camera on phones
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                    audio: false
+                });
                 video.srcObject = stream;
-                startBtn.style.display = 'none';
-                stopBtn.style.display = 'inline-block';
-                isDetecting = true;
                 
-                // Wait for the video to be ready before starting detection
-                video.onloadeddata = () => {
+                video.onloadedmetadata = () => {
+                    video.play();
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-block';
+                    isDetecting = true;
+                    statusMsg.innerText = "Camera active. Point at an object...";
                     detectFrame();
                 };
-                statusMsg.innerText = "Camera active. Show me an item...";
             } catch (err) {
-                statusMsg.innerText = "Error accessing camera. Please make sure you clicked 'Allow'.";
+                statusMsg.innerText = "Camera permission denied or camera unavailable.";
                 console.error(err);
             }
         });
 
-        // 3. Handle Camera Stop
         stopBtn.addEventListener('click', () => {
             if (stream) { 
                 stream.getTracks().forEach(track => track.stop()); 
@@ -153,81 +187,62 @@
             statusMsg.innerText = "Camera stopped.";
         });
 
-        // 4. Handle Image Upload
         upload.addEventListener('change', (e) => {
-            if (!model) {
-                alert("Model is still loading.");
-                return;
-            }
+            if (!model) return;
             const file = e.target.files[0];
             if (!file) return;
             
-            // Stop camera if running
             if (isDetecting) stopBtn.click();
             
             const img = new Image();
             img.src = URL.createObjectURL(file);
             img.onload = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // Draw the uploaded image onto the canvas
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
                 statusMsg.innerText = "Analyzing image...";
-                
-                // Detect objects on the canvas
-                model.detect(canvas).then(predictions => {
+                model.detect(img).then(predictions => {
                     drawPredictions(predictions);
                     statusMsg.innerText = "Image analyzed.";
                 });
             }
         });
 
-        // 5. The core AI loop for live video
         async function detectFrame() {
             if (!isDetecting) return;
-            
-            // Tell the model to analyze the current video frame
             const predictions = await model.detect(video);
             
-            // Clear the previous drawings
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw new boxes
             drawPredictions(predictions);
-            
-            // Call this function again for the next frame
             animationId = requestAnimationFrame(detectFrame);
         }
 
-        // 6. Draw boxes and labels on the screen
         function drawPredictions(predictions) {
             predictions.forEach(prediction => {
                 const [x, y, width, height] = prediction.bbox;
                 const itemName = prediction.class;
                 const confidence = Math.round(prediction.score * 100);
                 
-                // Figure out the waste category
                 let category = 'Review';
-                let boxColor = '#d32f2f'; // Red for review
+                let boxColor = '#e53935'; 
                 
-                // Only categorize if confidence is above 50%
                 if (confidence > 50 && categories[itemName]) {
                     category = categories[itemName];
-                    boxColor = '#2e7d32'; // Green for recognized
+                    boxColor = '#2e7d32'; 
                 }
 
-                // Draw the rectangle
                 ctx.strokeStyle = boxColor;
                 ctx.lineWidth = 4;
                 ctx.strokeRect(x, y, width, height);
 
-                // Draw the background for the text
                 ctx.fillStyle = boxColor;
-                ctx.fillRect(x, y > 25 ? y - 25 : y, width, 25);
+                const labelText = `${itemName} (${confidence}%) - ${category}`;
+                ctx.font = 'bold 18px Arial';
+                const textWidth = ctx.measureText(labelText).width;
+                ctx.fillRect(x, y > 30 ? y - 28 : y, textWidth + 12, 26);
 
-                // Draw the text
-                ctx.fillStyle = 'white';
-                ctx.font = '16px Arial';
-                ctx.fillText(`${itemName} (${confidence}%) → ${category}`, x + 5, y > 25 ? y - 7 : y + 18);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(labelText, x + 6, y > 30 ? y - 9 : y + 20);
             });
         }
     </script>
